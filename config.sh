@@ -1,7 +1,7 @@
 #!/bin/bash
-# Wrote by Salah
-# We check to see if mysql-server is installed 
-# This if is tested individually and worked just right.
+# Wrote by Se1ah
+# reads remote hostname by given IP address
+remote_host=$(ssh zhyar.bakhtyar@10.10.10.10 'hostname')
 mysql_password='put your mysql password here'
 if [ $HOSTNAME == "Put target hostname in here [the host you ssh to]" ]; then
     dpkg -s mysql-server > /dev/null
@@ -56,20 +56,23 @@ if [ $HOSTNAME == "Put target hostname in here [the host you ssh to]" ]; then
     sudo sh -c 'printf "[Unit]\nDescription=Example systemd service.\n\n[Service]\nType=simple\nExecStart=/bin/bash /tmp/my_sendmail.sh\n\n[Install]\nWantedBy=multi-user.target\n" > /etc/systemd/system/email-mysql-logs.service'
      sudo chmod 644 /etc/systemd/system/email-mysql-logs.service
     # Creating send mail executable
-    printf 'mail --debug-level=all -s "MySQL Log $(date) '"$email_address"' < /tmp/mysql.log' > /tmp/my_sendmail.sh
+    printf '#!/bin/bash\nwget -q --tries=10 --timeout=20 --spider http://google.com\nif [[ $? -ne 0 ]]; then\n\techo "Please check your internet connectivity"\n\texit\nelse\n\tsudo journalctl -n 20 -u mysql.service | nl -b a -s "." > /tmp/mysql.log\n\tmail --debug-level=all -s "MySQL Log $(date)" '"$email_address"' < /tmp/mysql.log\nfi' > /tmp/my_sendmail.sh
     sudo chmod +x /tmp/my_sendmail.sh
     sudo systemctl start email-mysql-logs.service
     sudo systemctl enable email-mysql-logs.service
 
     # we create a systemd timer with the same name as the previous service to run it every 12 hours
-    sudo sh -c 'printf "[Unit]\nDescription=run my script\n\n[Timer]\nOnUnitActiveSec=12h\nPersistent=true\n\n[Install]\nWantedBy=timers.target" > /etc/systemd/system/email-mysql-logs.timer'
+    printf '#!/bin/bash\nsudo journalctl -n 20 -u mysql.service | nl -b a -s "." > /tmp/mysql.log\nmail --debug-level=all -s "MySQL Log $(date)" '"$email_address"' < /tmp/mysql.log' > /tmp/my_sendmail.sh
     sudo systemctl enable email-mysql-logs.timer
     sudo systemctl start email-mysql-logs.timer
 fi
 
-ssh_username="put your ssh username here"
-ssh_host="put the ip/domain name of your host in here"
-# This if condition prevent the parent to invoke this part recursively
-if [ $(ps -o comm= $PPID) == "-bash" ]; then
-    ssh "$ssh_username"@"$ssh_host" 'bash -s' < my-config.sh
+
+if [ "$HOSTNAME" == "$remote_host" ]; then
+        exit
+fi
+scp $PWD/remote zhyar.bakhtyar@10.10.10.10:/tmp
+parent=$(ps $PPID | tail -n 1 | awk "{print \$5}")
+if [ "$parent" == "-bash" ]; then
+ssh -t ssh zhyar.bakhtyar@10.10.10.10 'chmod +x /tmp/remote; sh -c /tmp/remote'
 fi
