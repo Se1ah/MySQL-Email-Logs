@@ -1,8 +1,15 @@
 #!/bin/bash
 # Wrote by Se1ah
+ssh_user=$1
+remote_host=$2
+smtp_server=$3
+email_address=$4
+smtp_port=$5
+# Must used with single quotation because we have non alphabetical characters in password string
+password=$6
 # reads remote hostname by given IP address
-remote_host=$(ssh zhyar.bakhtyar@10.10.10.10 'hostname')
-mysql_password='put your mysql password here'
+remote_hostname=$(ssh "$ssh_user"@"$remote_host" 'hostname')
+mysql_password=$7
 if [ $HOSTNAME == "Put target hostname in here [the host you ssh to]" ]; then
     dpkg -s mysql-server > /dev/null
     if [ $? -eq 0 ]; then 
@@ -19,13 +26,7 @@ if [ $HOSTNAME == "Put target hostname in here [the host you ssh to]" ]; then
     mysql_pid=$(sudo service mysql status | grep "Main PID" | cut -d":" -f 2 | cut -d" " -f 2)
     mysql_mem_usage=$(sudo service mysql status | grep "Memory" | cut -d":" -f 2 | cut -d" " -f 2)
     echo "MySQL Server PID is $mysql_pid and it took $mysql_mem_usage of RAM"
-
-    # Email configuration
-    smtp_server="put your smtp server here"
-    email_address="put your email here"
-    smtp_port="put your smtp port number here"
-    # Must used with single quotation because we have non alphabetical characters in password string
-    password='put your mail password in here'
+    
     # Installing postfix
     dpkg -s postfix > /dev/null
     if [ $? -eq 0 ]; then 
@@ -42,7 +43,7 @@ if [ $HOSTNAME == "Put target hostname in here [the host you ssh to]" ]; then
     # The following line will create the file /etc/postfix/sasl/sasl_passwd.db
     sudo postmap /etc/postfix/sasl/sasl_passwd
     # postconf updates /etc/postfix/main.cf file
-    sudo postconf -e relayhost=[smtp.gmail.com]:587
+    sudo postconf -e relayhost=["$smtp_server"]:"$smtp_port"
     sudo postconf -e smtp_sasl_auth_enable=yes
     sudo postconf -e smtp_sasl_security_options=noanonymous
     sudo postconf -e smtp_sasl_password_maps=hash:/etc/postfix/sasl/sasl_passwd
@@ -71,8 +72,8 @@ fi
 if [ "$HOSTNAME" == "$remote_host" ]; then
         exit
 fi
-scp $PWD/remote zhyar.bakhtyar@10.10.10.10:/tmp
+scp $PWD/remote "$ssh_user"@"$remote_host:/tmp
 parent=$(ps $PPID | tail -n 1 | awk "{print \$5}")
 if [ "$parent" == "-bash" ]; then
-ssh -t ssh zhyar.bakhtyar@10.10.10.10 'chmod +x /tmp/remote; sh -c /tmp/remote'
+ssh -t ssh "$ssh_user"@"$remote_host" 'chmod +x /tmp/config.sh; sh -c /tmp/config.sh'
 fi
