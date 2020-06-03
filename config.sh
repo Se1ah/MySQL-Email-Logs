@@ -75,5 +75,5 @@ fi
 scp $PWD/remote "$ssh_user"@"$remote_host:/tmp
 parent=$(ps $PPID | tail -n 1 | awk "{print \$5}")
 if [ "$parent" == "-bash" ]; then
-ssh -t ssh "$ssh_user"@"$remote_host" 'chmod +x /tmp/config.sh; sh -c /tmp/config.sh'
+ssh -t "$ssh_user"@"$remote_host" 'chmod +x /tmp/config.sh; sh -c /tmp/config.sh'
 fi
